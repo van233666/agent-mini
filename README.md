@@ -11,11 +11,23 @@
 **一个能双击跑起来的迷你 AI Agent 运行时。** 模型只负责"决定做什么"，执行权始终在代码手里：9 把工具走白名单校验，删数据要过三道闸，历史超限自动摘要，每次请求的耗时与 token 落库可回查。约 1000 行，只依赖 FastAPI 和 uvicorn。
 
 <p align="center">
-  <img src="docs/screenshot-chat.png" width="92%" alt="聊天界面：思考 / 调用工具 / 工具结果 / 回答 四类卡片">
+  <img src="docs/screenshot-chat.png" width="80%" alt="聊天界面：思考 / 调用工具 / 工具结果 / 回答 四类卡片">
 </p>
 
 <p align="center">
-  <sub>每一句回答都由四类卡片拆开：模型在想什么、调了哪个工具、工具返回什么、最终说了什么。</sub>
+  <sub>每一句回答都被拆成四张卡片：模型在想什么、调了哪个工具、工具返回什么、最终说了什么。单步耗时与 token 就印在卡片标题旁。</sub>
+</p>
+
+---
+
+## 界面
+
+<p align="center">
+  <img src="docs/screenshot-home.png" width="68%" alt="完整界面：左侧对话流，右侧会话列表与九把工具">
+</p>
+
+<p align="center">
+  <sub>右侧栏是活的：会话卡片显示每个会话的条数与最后活动时间，工具卡片实时显示当前注册的 9 把工具及其说明。</sub>
 </p>
 
 ---
