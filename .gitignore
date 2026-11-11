@@ -1,0 +1,22 @@
+# ---- 虚拟环境 ----
+.venv/
+venv/
+
+# ---- 本地模型配置：里面有 API Key，绝对不能上传 ----
+config.json
+
+# ---- 运行时数据：对话记录、笔记、数据库、备份 ----
+data/
+*.bak
+*.bak2
+*.bak-*
+
+# ---- Python 缓存 ----
+__pycache__/
+*.py[cod]
+
+# ---- 编辑器与系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

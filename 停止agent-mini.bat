@@ -1,0 +1,3 @@
+@echo off
+chcp 65001 >nul
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "$c=Get-NetTCPConnection -LocalPort 8770 -State Listen -ErrorAction SilentlyContinue; if($c){ $c.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force }; Write-Host '已停止 agent-mini' -ForegroundColor Green } else { Write-Host 'agent-mini 没在运行' -ForegroundColor Yellow }; Start-Sleep 2"
