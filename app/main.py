@@ -97,12 +97,18 @@ def sessions():
 
 @app.post("/api/chat/stream")
 def chat_stream(body: ChatIn):
-    """流式接口：一边跑一边往外推，一行一个 JSON（这种格式叫 NDJSON）"""
+    """流式接口：一边跑一边往外推，一行一个 JSON（这种格式叫 NDJSON）
+
+    注意：护栏必须在返回 StreamingResponse 之前跑完。
+    如果放进生成器里，等它抛错时响应头已经发出去了，客户端只会拿到 200 + 空响应，
+    既不是 400 也不是 429，调用方没法判断是自己输入有问题还是服务挂了。
+    """
     from fastapi.responses import StreamingResponse
 
+    text = _guard(body.message, body.session_id)
+
     def gen():
-        text = _guard(body.message, body.session_id)
-        for ev in loop.run_stream(body.message, body.session_id):
+        for ev in loop.run_stream(text, body.session_id):
             yield json.dumps(ev, ensure_ascii=False) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")

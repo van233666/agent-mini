@@ -167,7 +167,7 @@ pip install -r requirements-dev.txt
 
 用例为什么可重复：`tests/conftest.py` 把 `memory.DB_FILE` 指到临时目录、把 `llm.configured` 打桩成 False（走规则大脑，不联网不花钱）、每个用例前清空限流计数。三件事少一件，用例之间就会互相污染。
 
-`test_stream_guard_known_defect` 锁住了一个真实缺陷：**流式接口的护栏写在生成器内部**，抛错时响应头已经发出，客户端拿到的是 200 + 空响应而不是 400——调用方没法和"服务故障"区分。修复方向（把 `_guard` 提到返回 `StreamingResponse` 之前）写在用例注释里。
+`test_stream_guard_returns_400` / `test_stream_guard_rate_limited_returns_429` 是一组回归用例，对应一个**已经修掉的真实缺陷**：流式接口的护栏原先写在生成器内部，抛错时响应头已经发出，客户端拿到的是 200 + 空响应而不是 400——调用方没法和"服务故障"区分。修法是把 `_guard` 提到返回 `StreamingResponse` 之前；两个用例现在断言流式接口超长回 400、超频回 429。
 
 ---
 
@@ -214,7 +214,7 @@ pip install -r requirements-dev.txt
 - 限流计数放在进程内存里，**重启即清零**，多进程部署也不共享（生产要放 Redis）。
 - 只有一个模型供应商配置，没有多供应商路由与故障转移。
 - 前端是单文件手写渲染，没有组件化与状态管理。
-- 流式接口 `/api/chat/stream` 的护栏在生成器内部触发，超长输入返回的是 **200 + 空响应**而不是 400（已用 `test_stream_guard_known_defect` 锁住，修法是把它提到返回 `StreamingResponse` 之前）。
+- ~~流式接口的护栏在生成器内部触发，超长输入返回 200 + 空响应~~ 已修复：护栏提前到返回 `StreamingResponse` 之前，超长回 400、超频回 429，回归用例 `test_stream_guard_returns_400`。
 
 这些不是"没做完"，是"知道边界在哪"——下一步该动哪一块，清单里写着。
 

@@ -159,18 +159,28 @@ def test_stream_event_sequence(client, sid):
     assert events[call_idx]["name"] == "get_current_time"
 
 
-def test_stream_guard_known_defect(client, sid):
-    """【已知缺陷】流式接口的护栏在生成器内部才触发，响应已经开始，
+def test_stream_guard_returns_400(client, sid):
+    """回归用例：流式接口的护栏必须在响应开始前生效
 
-    所以客户端拿到的是 200 + 空响应，而不是 400 BAD_INPUT。
-    影响：调用方无法区分"输入违规"与"服务故障"，只能靠业务层二次判断。
-    修复方向：把 _guard 提到 chat_stream 函数体里（返回 StreamingResponse 之前）。
-    这个用例锁定当前行为，修复后应改断言为 400。
+    历史：护栏原先写在 gen() 生成器内部，抛错时响应头已发出，
+    客户端拿到 200 + 空响应（RuntimeError: response already started）。
+    修复：把 _guard 提到 chat_stream 函数体、返回 StreamingResponse 之前。
     """
     r = client.post("/api/chat/stream", json={"message": "啊" * (main.MAX_INPUT_CHARS + 500),
                                               "session_id": sid})
-    assert r.status_code == 200
-    assert r.text.strip() == ""
+    assert r.status_code == 400
+    assert r.json()["error"]["code"] == "BAD_INPUT"
+
+
+def test_stream_guard_rate_limited_returns_429(client, sid):
+    """同一会话连打 3 次流式：前 2 次放行，第 3 次必须 429 而不是 200 空响应"""
+    for _ in range(2):
+        r = client.post("/api/chat/stream", json={"message": "现在几点了", "session_id": sid})
+        assert r.status_code == 200
+
+    r = client.post("/api/chat/stream", json={"message": "现在几点了", "session_id": sid})
+    assert r.status_code == 429
+    assert r.json()["error"]["code"] == "RATE_LIMITED"
 
 
 # ══════════════════ 五、负向：工具白名单与参数校验 ══════════════════
