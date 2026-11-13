@@ -5,6 +5,7 @@
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white">
   <img alt="Agent" src="https://img.shields.io/badge/Agent-ReAct-6E56CF">
   <img alt="deps" src="https://img.shields.io/badge/%E4%BE%9D%E8%B5%96-2%20%E4%B8%AA%E5%8C%85-brightgreen">
+  <img alt="tests" src="https://img.shields.io/badge/tests-17%20passed-brightgreen">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
@@ -107,9 +108,10 @@ agent-mini/
 │  └─ static/index.html   # 单文件前端：深色聊天界面，逐步骤渲染
 ├─ data/             # 运行时生成：memory.db + notes.json（已被 .gitignore 忽略）
 ├─ docs/             # 截图
+├─ tests/            # pytest 接口用例（17 条）+ 隔离装置 conftest.py
 ├─ config.example.json
-├─ launch.ps1 / 启动agent-mini.bat / 停止agent-mini.bat / 上传到GitHub.bat
-└─ requirements.txt
+├─ launch.ps1 / 启动agent-mini.bat / 停止agent-mini.bat / 测试agent-mini.bat / 上传到GitHub.bat
+├─ requirements.txt / requirements-dev.txt
 ```
 
 ---
@@ -143,6 +145,29 @@ agent-mini/
 ```
 
 `rounds: 2` = 想 → 调工具 → 再想 → 回答。
+
+---
+
+## 测试
+
+17 条接口用例，一次跑完不到 1 秒；不联网、不写真实数据库，所以跑一百遍结果都一样。
+
+```bash
+pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m pytest -v
+# 不想记命令：双击「测试agent-mini.bat」
+```
+
+| 类别 | 覆盖内容 |
+| --- | --- |
+| 契约 | 健康检查字段、9 个工具的 name/description/parameters 与不重名、工具按意图裁剪与无命中退回全量、记忆接口结构、trace 字段齐全 |
+| 边界 | 空白输入 400、2001 字 400、正好 2000 字必须放行 |
+| 并发 | 同会话串行 3 次 → 200 / 200 / 429；被限流的会话换成新会话仍 200；3 线程并发 → 恰好放行 2 个 |
+| 负向 | 编造工具名被白名单拦住、缺必填参数报出缺哪个、不可逆删除传 `true` 被拒、原样口令才真正执行 |
+
+用例为什么可重复：`tests/conftest.py` 把 `memory.DB_FILE` 指到临时目录、把 `llm.configured` 打桩成 False（走规则大脑，不联网不花钱）、每个用例前清空限流计数。三件事少一件，用例之间就会互相污染。
+
+`test_stream_guard_known_defect` 锁住了一个真实缺陷：**流式接口的护栏写在生成器内部**，抛错时响应头已经发出，客户端拿到的是 200 + 空响应而不是 400——调用方没法和"服务故障"区分。修复方向（把 `_guard` 提到返回 `StreamingResponse` 之前）写在用例注释里。
 
 ---
 
@@ -189,6 +214,7 @@ agent-mini/
 - 限流计数放在进程内存里，**重启即清零**，多进程部署也不共享（生产要放 Redis）。
 - 只有一个模型供应商配置，没有多供应商路由与故障转移。
 - 前端是单文件手写渲染，没有组件化与状态管理。
+- 流式接口 `/api/chat/stream` 的护栏在生成器内部触发，超长输入返回的是 **200 + 空响应**而不是 400（已用 `test_stream_guard_known_defect` 锁住，修法是把它提到返回 `StreamingResponse` 之前）。
 
 这些不是"没做完"，是"知道边界在哪"——下一步该动哪一块，清单里写着。
 
